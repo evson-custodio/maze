@@ -1,0 +1,27 @@
+{
+  "name": "maze",
+  "version": "1.0.0",
+  "description": "A maze made in OpenGL using the Three.js library",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/evsoncustodio/maze.git"
+  },
+  "keywords": [
+    "Maze",
+    "OpenGL",
+    "Three.js"
+  ],
+  "author": "evsoncustodio",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/evsoncustodio/maze/issues"
+  },
+  "homepage": "https://github.com/evsoncustodio/maze#readme",
+  "dependencies": {
+    "express": "^4.16.3"
+  }
+}
