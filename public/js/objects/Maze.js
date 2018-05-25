@@ -1,17 +1,18 @@
-function Maze(matrix, camera) {
+function Maze(matrix, renderer) {
     let maze = new THREE.Object3D();
 
     maze.width = 0;
     maze.height = 0;
     maze.mat = copyMatrix(matrix);
-    maze.camera = camera;
 
     matrixWidthHeight();
 
     maze.floor = Floor(maze.width, maze.height);
-    maze.floor.rotateX(Math.PI / 2);
-    maze.character = Ball(0.25);
+    maze.character = Ball(0.25, renderer);
     maze.walls = [];
+    maze.renderer = renderer;
+    maze.camera = new THREE.OrthographicCamera(-maze.height * aspect / 2, maze.height * aspect / 2, maze.height / 2, -maze.height / 2, 1, 2000);
+    maze.camera.position.z = 10;
 
     maze.isAnimation = false;
     maze.animation = () => {};
@@ -37,7 +38,8 @@ function Maze(matrix, camera) {
     }
 
     function matrixToWall() {
-        let mat =copyMatrix(maze.mat);
+        let mat = copyMatrix(maze.mat);
+
         for (h = 0; h < mat.length; h++) {
             for (w = 0; w < mat[h].length; w++) {
                 if (mat[h][w]) {
@@ -45,25 +47,25 @@ function Maze(matrix, camera) {
                     let biggestH = 0;
                     let wall = null;
 
-                    for (let i = w; i < mat[h].length && mat[h][i]; biggestW++, i++);
+                    for (let i = h; i < mat.length && w < mat[i].length && mat[i][w]; biggestH++, i++);
 
-                    for (let j = h; j < mat.length && w < mat[j].length && mat[j][w]; biggestH++, j++);
+                    for (let j = w; j < mat[h].length && mat[h][j]; biggestW++, j++);
 
                     if (biggestW >= biggestH) {
-                        for (let i = w; i < (w + biggestW); mat[h][i] = 0, i++);
+                        for (let j = w; j < (w + biggestW); mat[h][j] = 0, j++);
 
                         wall = Wall(biggestW, 2, 1);
-                        wall.position.set(w + (biggestW / 2) - (maze.width / 2), 1, h + (1 / 2) - (maze.height / 2));
+                        wall.position.set(w - (maze.width / 2) + (biggestW / 2), -h + (maze.height / 2)  - (1 / 2), 1.001);
 
                         w += (biggestW - 1);
                     }
                     else {
-                        for (let j = h; j < (h + biggestH); mat[j][w] = 0, j++);
+                        for (let i = h; i < (h + biggestH); mat[i][w] = 0, i++);
 
                         wall = Wall(biggestH, 2, 1);
-                        wall.position.set(w + (1 / 2) - (maze.width / 2), 1, h + (biggestH / 2) - (maze.height / 2));
+                        wall.position.set(w - (maze.width / 2) + (1 / 2), -h + (maze.height / 2) - (biggestH / 2), 1.001);
 
-                        wall.rotateY(Math.PI / 2);
+                        wall.rotateZ(Math.PI / 2);
                     }
 
                     maze.walls.push(wall);
@@ -72,101 +74,114 @@ function Maze(matrix, camera) {
         }
     }
 
-    function setPositionCharacter(x, z) {
-        maze.character.position.x = x + (1 / 2) - (maze.width / 2);
-        maze.character.position.z = z + (1 / 2) - (maze.height / 2);
-
-        if (maze.camera) {
-            maze.camera.position.x = x + (1 / 2) - (maze.width / 2);
-            maze.camera.position.z = z - (maze.height / 2);
-            maze.camera.lookAt(new THREE.Vector3(maze.camera.position.x, maze.camera.position.y, maze.camera.position.z - 1));
-        }
-    }
-
     function setInitialPositionCharacter() {
         let i = 0;
         let j = 0;
 
-        while(matrix[j][i]) {
-            i = Math.floor(Math.random() * maze.width);
-            j = Math.floor(Math.random() * maze.height);
+        while(matrix[i][j]) {
+            i = Math.floor(Math.random() * maze.height);
+            j = Math.floor(Math.random() * maze.width);
         }
 
-        maze.character.rotateY(Math.PI / 2);
         maze.character.direction = 0;
-        maze.character.x = i;
-        maze.character.z = j;
-        maze.character.elevation = 0.75; // Radius 0.5 - 0.5 Radius 0.25 - 0.75
-        maze.character.back = 1.25; // Radius 0.5 - 1 Radius 0.25 - 1.25
-        maze.character.focus = 1.25; // Radius 0.5 - 1 Radius 0.25 - 1.25
-        maze.character.focusElevation = 0; // 0
-        maze.character.position.set(i + (1 / 2) - (maze.width / 2), maze.character.radius, j + (1 / 2) - (maze.height / 2));
-        setCamera();
-    }
-
-    function setCamera() {
-        if (maze.character.direction == 0) {
-            maze.camera.position.set(maze.character.position.x, maze.character.position.y + maze.character.elevation, maze.character.position.z + maze.character.back);
-            maze.camera.lookAt(new THREE.Vector3(maze.character.position.x, maze.character.position.y + maze.character.focusElevation, maze.character.position.z - maze.character.focus));
-        }
-        else if (maze.character.direction == 1) {
-            maze.camera.position.set(maze.character.position.x - maze.character.back, maze.character.position.y + maze.character.elevation, maze.character.position.z);
-            maze.camera.lookAt(new THREE.Vector3(maze.character.position.x + maze.character.focus, maze.character.position.y + maze.character.focusElevation, maze.character.position.z));
-        }
-        else if (maze.character.direction == 2) {
-            maze.camera.position.set(maze.character.position.x, maze.character.position.y + maze.character.elevation, maze.character.position.z - maze.character.back);
-            maze.camera.lookAt(new THREE.Vector3(maze.character.position.x, maze.character.position.y + maze.character.focusElevation, maze.character.position.z + maze.character.focus));
-        }
-        else if (maze.character.direction == 3) {
-            maze.camera.position.set(maze.character.position.x + maze.character.back, maze.character.position.y + maze.character.elevation, maze.character.position.z);
-            maze.camera.lookAt(new THREE.Vector3(maze.character.position.x - maze.character.focus, maze.character.position.y + maze.character.focusElevation, maze.character.position.z));
-        }
+        maze.character.y = i;
+        maze.character.x = j;
+        // maze.character.elevation = 0.75; // Radius 0.5 - 0.5 Radius 0.25 - 0.75
+        // maze.character.back = 1.25; // Radius 0.5 - 1 Radius 0.25 - 1.25
+        // maze.character.focus = 1.25; // Radius 0.5 - 1 Radius 0.25 - 1.25
+        // maze.character.focusElevation = 0; // 0
+        maze.character.position.set(-(maze.width / 2) + j + (1 / 2), (maze.height / 2) - i - (1 / 2), maze.character.radius + 0.001);
     }
 
     maze.keyDownHolder = (event) => {
-        if (!maze.isAnimation) {
-            switch (event.key) {
-                case 'ArrowUp':
-                if (maze.character.direction == 0 && !matrix[maze.character.z - 1][maze.character.x]) {
-                    maze.character.z--;
-                    maze.character.translateX(1);
-                    setCamera();
+        if (!maze.isAnimation && (event.key === 'ArrowUp' || event.key === 'ArrowRight' || event.key === 'ArrowDown' || event.key === 'ArrowLeft')) {
+            maze.isAnimation = true;
+            let frames = 30;
+
+            if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+                let distance = (event.key === 'ArrowUp') ? 1 : -1;
+                let partialDistance = distance / frames;
+
+                let colision = false;
+                let angle = Math.PI;
+                let partialAngle = angle / frames;
+                let currentAngle = partialAngle;
+
+                if (maze.character.direction == 0 && !maze.mat[maze.character.y - distance][maze.character.x]) {
+                    maze.character.y -= distance;
                 }
-                else if (maze.character.direction == 1 && !matrix[maze.character.z][maze.character.x + 1]) {
-                    maze.character.x++;
-                    maze.character.translateX(1);
-                    setCamera();
+                else if (maze.character.direction == 1 && !maze.mat[maze.character.y][maze.character.x + distance]) {
+                    maze.character.x += distance;
                 }
-                else if (maze.character.direction == 2 && !matrix[maze.character.z + 1][maze.character.x]) {
-                    maze.character.z++;
-                    maze.character.translateX(1);
-                    setCamera();
+                else if (maze.character.direction == 2 && !maze.mat[maze.character.y + distance][maze.character.x]) {
+                    maze.character.y += distance;
                 }
-                else if (maze.character.direction == 3 && !matrix[maze.character.z][maze.character.x - 1]) {
-                    maze.character.x--;
-                    maze.character.translateX(1);
-                    setCamera();
+                else if (maze.character.direction == 3 && !maze.mat[maze.character.y][maze.character.x - distance]) {
+                    maze.character.x -= distance;
                 }
-                break;
-                case 'ArrowLeft':
-                maze.character.rotateY(Math.PI / 2);
-                maze.character.direction = (!maze.character.direction) ? 3 : maze.character.direction - 1;
-                setCamera();
-                break;
-                case 'ArrowRight':
-                maze.character.rotateY(-Math.PI / 2);
-                maze.character.direction++;
-                maze.character.direction = (maze.character.direction % 4);
-                setCamera();
-                break;
-                case 'ArrowDown':
-                maze.character.rotateY(Math.PI);
-                maze.character.direction += 2;
-                maze.character.direction = (maze.character.direction % 4);
-                setCamera();
-                break;
+                else {
+                    colision = true;
+                    maze.isAnimation = false;
+                }
+
+                if (!colision) {
+                    maze.animation = () => {
+                        if (frames > 0) {
+                            maze.character.translateX(partialDistance);
+                            maze.character.translateY(Math.sin(currentAngle) - Math.sin(currentAngle - partialAngle));
+                            currentAngle += partialAngle;
+                        }
+                        else if (frames == 0) {
+                            maze.isAnimation = false;
+                        }
+    
+                        frames--;
+                    }
+                }
+            }
+            else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+                let rotationAxis = maze.character.rotationVertices.z;
+                let angle = Math.PI / 2;
+
+                if (event.key === 'ArrowRight') {
+                    angle = -angle;
+                    maze.character.direction++;
+                    maze.character.direction = (maze.character.direction % 4);
+                }
+                else {
+                    maze.character.direction = (!maze.character.direction) ? 3 : maze.character.direction - 1;
+                }
+
+                let partialAngle = angle / frames;
+
+                let quaternion = new THREE.Quaternion();
+                quaternion.setFromAxisAngle(rotationAxis, angle);
+
+                let quaternionPartial = new THREE.Quaternion();
+                quaternionPartial.setFromAxisAngle(rotationAxis, partialAngle);
+
+                maze.animation = () => {
+                    if (frames > 0) {
+                        maze.character.applyQuaternion(quaternionPartial);
+                    }
+                    else if (frames == 0) {
+                        maze.isAnimation = false;
+                    }
+
+                    frames--;
+                }
             }
         }
+    }
+
+    maze.updateCamera = () => {
+        let aspect = window.innerWidth / window.innerHeight;
+
+        maze.camera.left = -maze.height * aspect / 2;
+        maze.camera.right = maze.height * aspect / 2;
+        maze.camera.updateProjectionMatrix();
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
     setInitialPositionCharacter();

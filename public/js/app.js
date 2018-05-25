@@ -1,13 +1,3 @@
-let teste = [
-    [1, 1, 1, 1, 1, 1, 1],
-    [1, 0, 1, 0, 0, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 1, 1, 0, 1],
-    [1, 0, 0, 0, 0, 0, 1],
-    [1, 1, 1, 0, 1, 1, 1]
-]
-
 let matrix = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     [1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1],
@@ -53,17 +43,8 @@ let matrix = [
 ];
 
 let aspect = window.innerWidth / window.innerHeight;
-let camera = 0;
 
-let frustumPerspective = 20;
-let cameraPerspective = new THREE.PerspectiveCamera(frustumPerspective, aspect, 1, 2000);
-cameraPerspective.frustum = frustumPerspective;
-
-let maze = Maze(matrix, cameraPerspective);
-
-let frustumOrhographic = maze.height;
-let cameraOrthographic = new THREE.OrthographicCamera(-frustumOrhographic * aspect / 2, frustumOrhographic * aspect / 2, frustumOrhographic / 2, -frustumOrhographic / 2, 1, 2000);
-cameraOrthographic.frustum = frustumOrhographic;
+let userCamera = 0;
 
 let scene = new THREE.Scene();
 
@@ -74,6 +55,8 @@ let renderer = new THREE.WebGLRenderer({
 
 document.body.appendChild(renderer.domElement);
 
+let maze = Maze(matrix, renderer);
+
 scene.add(maze);
 
 updateCamera();
@@ -82,27 +65,20 @@ animate();
 function updateCamera() {
     aspect = window.innerWidth / window.innerHeight;
 
-    if (camera) {
-        cameraPerspective.aspect = aspect;
-        cameraPerspective.updateProjectionMatrix();
-    }
-    else {
-        cameraOrthographic.left = -cameraOrthographic.frustum * aspect / 2;
-        cameraOrthographic.right = cameraOrthographic.frustum * aspect / 2;
-        cameraOrthographic.position.set(0, 10, 0);
-        cameraOrthographic.lookAt(new THREE.Vector3(0, 0, 0,));
-        cameraOrthographic.updateProjectionMatrix();
-    }
+    maze.updateCamera();
+    maze.character.updateCamera();
 
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
 function render() {
-    if (camera) {
-        renderer.render(scene, cameraPerspective);
+    if (userCamera) {
+        maze.character.orbit.enabled = true;
+        renderer.render(scene, maze.character.camera);
     }
     else {
-        renderer.render(scene, cameraOrthographic);
+        maze.character.orbit.enabled = false;
+        renderer.render(scene, maze.camera);
     }
 }
 
@@ -118,10 +94,10 @@ document.body.addEventListener('keydown', (event) => {
 document.body.addEventListener('keydown', (event) => {
     switch (event.key) {
         case '1':
-        camera = 0;
+        userCamera = 0;
         break;
         case '2':
-        camera = 1;
+        userCamera = 1;
         break;
     }
 });
