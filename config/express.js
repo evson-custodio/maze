@@ -5,8 +5,8 @@ const os = require('os');
 module.exports = () => {
     const app = express();
 
-    app.set('port', 8080);
-    app.set('ip', os.networkInterfaces()['Ethernet'].filter(interface => interface.family == 'IPv4')[0].address);
+    app.set('port', process.env.PORT || 1337);
+    
 
     app.use(favicon('public/favicon.png'));
     app.use(express.urlencoded({extended: true}));
